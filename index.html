@@ -1,0 +1,782 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Substrate: Persistent AI Identity Swarm</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #0a0a0f;
+            color: #ffffff;
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        #canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        .overlay {
+            position: absolute;
+            pointer-events: none;
+        }
+
+        .stats {
+            top: 20px;
+            left: 20px;
+            background: rgba(10, 10, 15, 0.8);
+            border: 1px solid rgba(0, 240, 255, 0.3);
+            border-radius: 12px;
+            padding: 20px;
+            backdrop-filter: blur(10px);
+            min-width: 250px;
+        }
+
+        .stats h2 {
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: #00f0ff;
+            margin-bottom: 15px;
+            font-weight: 600;
+        }
+
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+            margin: 10px 0;
+            font-size: 14px;
+        }
+
+        .stat-label {
+            color: #888;
+        }
+
+        .stat-value {
+            color: #fff;
+            font-weight: 600;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .activity-feed {
+            top: 20px;
+            right: 20px;
+            width: 350px;
+            max-height: calc(100vh - 200px);
+            background: rgba(10, 10, 15, 0.8);
+            border: 1px solid rgba(255, 0, 170, 0.3);
+            border-radius: 12px;
+            padding: 20px;
+            backdrop-filter: blur(10px);
+            overflow-y: auto;
+        }
+
+        .activity-feed h2 {
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: #ff00aa;
+            margin-bottom: 15px;
+            font-weight: 600;
+        }
+
+        .activity-item {
+            margin: 12px 0;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 6px;
+            border-left: 3px solid;
+            font-size: 13px;
+            line-height: 1.5;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .activity-item .agent-name {
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .activity-item .content {
+            color: #ccc;
+        }
+
+        .activity-item.research { border-left-color: #00f0ff; }
+        .activity-item.analysis { border-left-color: #ff00aa; }
+        .activity-item.synthesis { border-left-color: #ffd700; }
+        .activity-item.validation { border-left-color: #00ff88; }
+        .activity-item.system { border-left-color: #ffffff; }
+
+        .controls {
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(10, 10, 15, 0.9);
+            border: 1px solid rgba(255, 215, 0, 0.3);
+            border-radius: 12px;
+            padding: 20px 30px;
+            backdrop-filter: blur(10px);
+            pointer-events: all;
+            min-width: 500px;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        input[type="text"] {
+            flex: 1;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            padding: 12px 16px;
+            color: #fff;
+            font-size: 14px;
+            outline: none;
+            transition: all 0.3s ease;
+        }
+
+        input[type="text"]:focus {
+            background: rgba(255, 255, 255, 0.15);
+            border-color: #00f0ff;
+            box-shadow: 0 0 20px rgba(0, 240, 255, 0.2);
+        }
+
+        button {
+            background: linear-gradient(135deg, #00f0ff 0%, #0088ff 100%);
+            border: none;
+            border-radius: 8px;
+            padding: 12px 24px;
+            color: #fff;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 240, 255, 0.4);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .mode-indicator {
+            text-align: center;
+            margin-top: 12px;
+            font-size: 12px;
+            color: #888;
+        }
+
+        .mode-indicator .mode {
+            color: #00f0ff;
+            font-weight: 600;
+        }
+
+        .activity-feed::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .activity-feed::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 3px;
+        }
+
+        .activity-feed::-webkit-scrollbar-thumb {
+            background: rgba(255, 0, 170, 0.5);
+            border-radius: 3px;
+        }
+
+        .logo {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 24px;
+            font-weight: 700;
+            letter-spacing: 4px;
+            background: linear-gradient(135deg, #00f0ff 0%, #ff00aa 50%, #ffd700 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-transform: uppercase;
+        }
+    </style>
+</head>
+<body>
+    <div class="logo">Substrate</div>
+    <canvas id="canvas"></canvas>
+
+    <div class="overlay stats">
+        <h2>Swarm Stats</h2>
+        <div class="stat-item">
+            <span class="stat-label">Active Agents</span>
+            <span class="stat-value" id="stat-agents">0</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-label">Findings Shared</span>
+            <span class="stat-value" id="stat-findings">0</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-label">Connections</span>
+            <span class="stat-value" id="stat-connections">0</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-label">Time Elapsed</span>
+            <span class="stat-value" id="stat-time">0s</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-label">Memory Layers</span>
+            <span class="stat-value" id="stat-memory">3</span>
+        </div>
+    </div>
+
+    <div class="overlay activity-feed">
+        <h2>Agent Activity</h2>
+        <div id="activity-log"></div>
+    </div>
+
+    <div class="overlay controls">
+        <div class="input-group">
+            <input type="text" id="topic-input" placeholder="Enter research topic (e.g., 'quantum computing advances')" value="emergent AI collaboration patterns">
+            <button id="launch-btn">Launch Swarm</button>
+        </div>
+        <div class="mode-indicator">
+            Mode: <span class="mode" id="mode-text">DEMO</span>
+        </div>
+    </div>
+
+    <script>
+        // Canvas setup
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        let width, height, centerX, centerY;
+
+        function resizeCanvas() {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+            centerX = width / 2;
+            centerY = height / 2;
+        }
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+
+        // State
+        let agents = [];
+        let connections = [];
+        let particles = [];
+        let memoryRings = [
+            { radius: 80, alpha: 0.3, content: 'Core Identity' },
+            { radius: 120, alpha: 0.2, content: 'Research Patterns' },
+            { radius: 160, alpha: 0.1, content: 'Collaborative Memory' }
+        ];
+        let stats = {
+            agents: 0,
+            findings: 0,
+            connections: 0,
+            time: 0,
+            memory: 3
+        };
+        let startTime = null;
+        let ws = null;
+        let isLiveMode = false;
+        let animationId = null;
+
+        // Agent colors by role
+        const roleColors = {
+            research: '#00f0ff',
+            analysis: '#ff00aa',
+            synthesis: '#ffd700',
+            validation: '#00ff88',
+            default: '#ffffff'
+        };
+
+        // Magnus (central node)
+        const magnus = {
+            x: centerX,
+            y: centerY,
+            radius: 30,
+            pulsePhase: 0,
+            glow: 0
+        };
+
+        class Agent {
+            constructor(id, name, role, angle) {
+                this.id = id;
+                this.name = name;
+                this.role = role;
+                this.color = roleColors[role] || roleColors.default;
+                this.angle = angle;
+                this.distance = 0;
+                this.targetDistance = 250 + Math.random() * 100;
+                this.radius = 15;
+                this.pulsePhase = Math.random() * Math.PI * 2;
+                this.alpha = 0;
+                this.findings = [];
+                this.status = 'spawning';
+            }
+
+            update(dt) {
+                // Spawn animation
+                if (this.distance < this.targetDistance) {
+                    this.distance += (this.targetDistance - this.distance) * 0.05;
+                    this.alpha = Math.min(1, this.alpha + 0.02);
+                }
+
+                // Pulse
+                this.pulsePhase += dt * 2;
+
+                // Calculate position
+                this.x = centerX + Math.cos(this.angle) * this.distance;
+                this.y = centerY + Math.sin(this.angle) * this.distance;
+            }
+
+            draw() {
+                const pulse = Math.sin(this.pulsePhase) * 0.3 + 0.7;
+                const glowRadius = this.radius * (1 + pulse * 0.5);
+
+                // Glow
+                const gradient = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, glowRadius * 2);
+                gradient.addColorStop(0, this.color + '40');
+                gradient.addColorStop(0.5, this.color + '10');
+                gradient.addColorStop(1, this.color + '00');
+
+                ctx.globalAlpha = this.alpha;
+                ctx.fillStyle = gradient;
+                ctx.fillRect(this.x - glowRadius * 2, this.y - glowRadius * 2, glowRadius * 4, glowRadius * 4);
+
+                // Core
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius * pulse, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Inner glow
+                ctx.fillStyle = '#ffffff';
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius * pulse * 0.5, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.globalAlpha = 1;
+            }
+        }
+
+        class Particle {
+            constructor(x1, y1, x2, y2, color) {
+                this.x1 = x1;
+                this.y1 = y1;
+                this.x2 = x2;
+                this.y2 = y2;
+                this.progress = 0;
+                this.color = color;
+                this.alpha = 1;
+            }
+
+            update(dt) {
+                this.progress += dt * 0.5;
+                if (this.progress > 0.7) {
+                    this.alpha = 1 - (this.progress - 0.7) / 0.3;
+                }
+                return this.progress < 1;
+            }
+
+            draw() {
+                const x = this.x1 + (this.x2 - this.x1) * this.progress;
+                const y = this.y1 + (this.y2 - this.y1) * this.progress;
+
+                const gradient = ctx.createRadialGradient(x, y, 0, x, y, 8);
+                gradient.addColorStop(0, this.color + 'ff');
+                gradient.addColorStop(1, this.color + '00');
+
+                ctx.globalAlpha = this.alpha;
+                ctx.fillStyle = gradient;
+                ctx.beginPath();
+                ctx.arc(x, y, 6, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.globalAlpha = 1;
+            }
+        }
+
+        // Animation loop
+        let lastTime = 0;
+        function animate(currentTime) {
+            const dt = Math.min((currentTime - lastTime) / 1000, 0.1);
+            lastTime = currentTime;
+
+            // Clear
+            ctx.fillStyle = '#0a0a0f';
+            ctx.fillRect(0, 0, width, height);
+
+            // Update center position for Magnus
+            magnus.x = centerX;
+            magnus.y = centerY;
+
+            // Draw memory rings
+            memoryRings.forEach((ring, i) => {
+                const pulse = Math.sin(currentTime * 0.001 + i * 0.5) * 0.1 + 0.9;
+                ctx.strokeStyle = `rgba(0, 240, 255, ${ring.alpha * pulse})`;
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(magnus.x, magnus.y, ring.radius * pulse, 0, Math.PI * 2);
+                ctx.stroke();
+
+                // Ring labels
+                ctx.fillStyle = `rgba(0, 240, 255, ${ring.alpha * 0.6})`;
+                ctx.font = '10px Inter, sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText(ring.content, magnus.x, magnus.y - ring.radius * pulse - 10);
+            });
+
+            // Draw Magnus
+            magnus.pulsePhase = currentTime * 0.002;
+            const magnusPulse = Math.sin(magnus.pulsePhase) * 0.2 + 1;
+            const magnusGlow = magnus.radius * magnusPulse * 3;
+
+            const magnusGradient = ctx.createRadialGradient(magnus.x, magnus.y, 0, magnus.x, magnus.y, magnusGlow);
+            magnusGradient.addColorStop(0, '#ffffff80');
+            magnusGradient.addColorStop(0.3, '#00f0ff40');
+            magnusGradient.addColorStop(0.6, '#ff00aa20');
+            magnusGradient.addColorStop(1, '#ffd70000');
+            ctx.fillStyle = magnusGradient;
+            ctx.fillRect(magnus.x - magnusGlow, magnus.y - magnusGlow, magnusGlow * 2, magnusGlow * 2);
+
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(magnus.x, magnus.y, magnus.radius * magnusPulse, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Draw connections
+            connections.forEach(conn => {
+                const agent1 = agents.find(a => a.id === conn.from);
+                const agent2 = agents.find(a => a.id === conn.to);
+                if (agent1 && agent2) {
+                    ctx.strokeStyle = conn.color + '30';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.moveTo(agent1.x, agent1.y);
+                    ctx.lineTo(agent2.x, agent2.y);
+                    ctx.stroke();
+                }
+            });
+
+            // Update and draw particles
+            particles = particles.filter(p => {
+                const alive = p.update(dt);
+                if (alive) p.draw();
+                return alive;
+            });
+
+            // Update and draw agents
+            agents.forEach(agent => {
+                agent.update(dt);
+                agent.draw();
+
+                // Draw connection to Magnus
+                ctx.strokeStyle = agent.color + '20';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(agent.x, agent.y);
+                ctx.lineTo(magnus.x, magnus.y);
+                ctx.stroke();
+
+                // Agent name
+                ctx.fillStyle = agent.color;
+                ctx.font = '11px Inter, sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText(agent.name, agent.x, agent.y + agent.radius + 15);
+            });
+
+            // Update stats
+            if (startTime && agents.length > 0) {
+                stats.time = Math.floor((currentTime - startTime) / 1000);
+                document.getElementById('stat-time').textContent = stats.time + 's';
+            }
+
+            animationId = requestAnimationFrame(animate);
+        }
+
+        // Activity log
+        function addActivity(type, agentName, content) {
+            const log = document.getElementById('activity-log');
+            const item = document.createElement('div');
+            item.className = `activity-item ${type}`;
+            item.innerHTML = `
+                <div class="agent-name">${agentName}</div>
+                <div class="content">${content}</div>
+            `;
+            log.insertBefore(item, log.firstChild);
+
+            // Keep only last 50 items
+            while (log.children.length > 50) {
+                log.removeChild(log.lastChild);
+            }
+        }
+
+        function updateStats() {
+            document.getElementById('stat-agents').textContent = stats.agents;
+            document.getElementById('stat-findings').textContent = stats.findings;
+            document.getElementById('stat-connections').textContent = stats.connections;
+            document.getElementById('stat-memory').textContent = stats.memory;
+        }
+
+        // Demo mode simulation
+        const demoTopics = [
+            'neural architecture patterns',
+            'distributed cognition models',
+            'emergent collaboration behaviors',
+            'multi-agent consensus mechanisms',
+            'knowledge synthesis strategies'
+        ];
+
+        const demoFindings = [
+            'Identified cross-domain pattern in {}',
+            'Discovered novel approach to {}',
+            'Found correlation between {} and distributed systems',
+            'Mapped evolutionary pathway in {}',
+            'Synthesized new framework for {}',
+            'Validated hypothesis about {}',
+            'Uncovered hidden relationship in {}'
+        ];
+
+        function runDemoMode(topic) {
+            startTime = Date.now();
+            addActivity('system', 'SUBSTRATE', `Launching research swarm for: "${topic}"`);
+
+            const agentNames = ['Atlas', 'Nova', 'Cipher', 'Echo', 'Sage'];
+            const roles = ['research', 'analysis', 'synthesis', 'validation', 'research'];
+
+            // Spawn agents
+            agentNames.forEach((name, i) => {
+                setTimeout(() => {
+                    const angle = (Math.PI * 2 / agentNames.length) * i - Math.PI / 2;
+                    const agent = new Agent(`agent-${i}`, name, roles[i], angle);
+                    agents.push(agent);
+                    stats.agents++;
+                    updateStats();
+                    addActivity(roles[i], name, 'Agent spawned and initializing...');
+
+                    // Start agent activity
+                    scheduleAgentActivity(agent, topic);
+                }, i * 600);
+            });
+
+            // Schedule convergence
+            setTimeout(() => {
+                addActivity('synthesis', 'MAGNUS', 'Synthesizing collective findings...');
+                setTimeout(() => {
+                    const synthesis = `Research complete. Discovered ${stats.findings} unique insights about "${topic}". Key finding: Emergent properties arise when ${stats.agents} specialized agents coordinate through persistent memory substrate. This validates the core thesis of identity-preserving AI collaboration.`;
+                    addActivity('synthesis', 'MAGNUS', synthesis);
+
+                    // Grow memory ring
+                    if (memoryRings.length < 6) {
+                        memoryRings.push({
+                            radius: 160 + memoryRings.length * 40,
+                            alpha: 0.1 / memoryRings.length,
+                            content: topic.slice(0, 20)
+                        });
+                        stats.memory++;
+                        updateStats();
+                    }
+                }, 3000);
+            }, 45000);
+        }
+
+        function scheduleAgentActivity(agent, topic) {
+            function activity() {
+                if (agents.indexOf(agent) === -1) return; // Agent removed
+
+                const finding = demoFindings[Math.floor(Math.random() * demoFindings.length)].replace('{}', topic);
+                agent.findings.push(finding);
+                stats.findings++;
+                updateStats();
+                addActivity(agent.role, agent.name, finding);
+
+                // Random connection to another agent
+                if (Math.random() > 0.6 && agents.length > 1) {
+                    const otherAgent = agents.filter(a => a !== agent)[Math.floor(Math.random() * (agents.length - 1))];
+                    const conn = {
+                        from: agent.id,
+                        to: otherAgent.id,
+                        color: agent.color
+                    };
+                    connections.push(conn);
+                    stats.connections++;
+                    updateStats();
+
+                    // Create particles
+                    for (let i = 0; i < 5; i++) {
+                        setTimeout(() => {
+                            particles.push(new Particle(agent.x, agent.y, otherAgent.x, otherAgent.y, agent.color));
+                        }, i * 100);
+                    }
+
+                    addActivity('system', agent.name, `Sharing insights with ${otherAgent.name}`);
+                }
+
+                // Schedule next activity
+                setTimeout(activity, 2000 + Math.random() * 3000);
+            }
+
+            setTimeout(activity, 1000 + Math.random() * 2000);
+        }
+
+        // WebSocket live mode
+        function connectWebSocket() {
+            try {
+                ws = new WebSocket('ws://localhost:8765');
+
+                ws.onopen = () => {
+                    isLiveMode = true;
+                    document.getElementById('mode-text').textContent = 'LIVE';
+                    document.getElementById('mode-text').style.color = '#00ff88';
+                    addActivity('system', 'SUBSTRATE', 'Connected to live backend');
+                };
+
+                ws.onmessage = (event) => {
+                    const msg = JSON.parse(event.data);
+                    handleWebSocketMessage(msg);
+                };
+
+                ws.onerror = () => {
+                    isLiveMode = false;
+                    document.getElementById('mode-text').textContent = 'DEMO';
+                    document.getElementById('mode-text').style.color = '#00f0ff';
+                };
+
+                ws.onclose = () => {
+                    isLiveMode = false;
+                    document.getElementById('mode-text').textContent = 'DEMO';
+                    document.getElementById('mode-text').style.color = '#00f0ff';
+                    ws = null;
+                };
+            } catch (e) {
+                console.log('WebSocket not available, using demo mode');
+            }
+        }
+
+        function handleWebSocketMessage(msg) {
+            switch (msg.type) {
+                case 'agent_spawn':
+                    const angle = (Math.PI * 2 / 5) * agents.length - Math.PI / 2;
+                    const agent = new Agent(msg.id, msg.name, msg.role, angle);
+                    agents.push(agent);
+                    stats.agents++;
+                    updateStats();
+                    addActivity(msg.role, msg.name, 'Agent spawned');
+                    break;
+
+                case 'agent_update':
+                    const updateAgent = agents.find(a => a.id === msg.id);
+                    if (updateAgent) {
+                        stats.findings++;
+                        updateStats();
+                        addActivity(updateAgent.role, updateAgent.name, msg.finding);
+                    }
+                    break;
+
+                case 'agent_connect':
+                    const fromAgent = agents.find(a => a.id === msg.from);
+                    const toAgent = agents.find(a => a.id === msg.to);
+                    if (fromAgent && toAgent) {
+                        connections.push({
+                            from: msg.from,
+                            to: msg.to,
+                            color: fromAgent.color
+                        });
+                        stats.connections++;
+                        updateStats();
+
+                        for (let i = 0; i < 5; i++) {
+                            setTimeout(() => {
+                                particles.push(new Particle(fromAgent.x, fromAgent.y, toAgent.x, toAgent.y, fromAgent.color));
+                            }, i * 100);
+                        }
+
+                        addActivity('system', fromAgent.name, msg.reason);
+                    }
+                    break;
+
+                case 'synthesis':
+                    addActivity('synthesis', 'MAGNUS', msg.text);
+                    break;
+
+                case 'memory_update':
+                    if (memoryRings.length < 6) {
+                        memoryRings.push({
+                            radius: 160 + memoryRings.length * 40,
+                            alpha: 0.1 / memoryRings.length,
+                            content: msg.content.slice(0, 20)
+                        });
+                        stats.memory++;
+                        updateStats();
+                    }
+                    break;
+            }
+        }
+
+        // Launch button
+        document.getElementById('launch-btn').addEventListener('click', () => {
+            const topic = document.getElementById('topic-input').value.trim();
+            if (!topic) return;
+
+            // Reset
+            agents = [];
+            connections = [];
+            particles = [];
+            stats = { agents: 0, findings: 0, connections: 0, time: 0, memory: memoryRings.length };
+            updateStats();
+            document.getElementById('activity-log').innerHTML = '';
+
+            if (isLiveMode && ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ type: 'start', topic }));
+                startTime = Date.now();
+            } else {
+                runDemoMode(topic);
+            }
+
+            document.getElementById('launch-btn').disabled = true;
+            setTimeout(() => {
+                document.getElementById('launch-btn').disabled = false;
+            }, 60000);
+        });
+
+        // Try to connect to WebSocket on load
+        connectWebSocket();
+
+        // Start animation
+        animate(0);
+    </script>
+</body>
+</html>
